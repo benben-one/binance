@@ -61,7 +61,7 @@ def reset():
     
     get_order_constants()
     
-class OrderManager():
+class OrderWorkder():
     baseline_price = -1
     timestamp = -1
     open_orders = None
@@ -92,13 +92,48 @@ class OrderManager():
             'close-short-high': [f'{self.timestamp}-close-short-high', 'SHORT',round(got_price * (1 + self.stop_loss), 7), 0, 'BUY', 'STOP_MARKET', int(5.5/got_price)]
         }
         
-    def statr(self):
+    def start(self):
         for key_ in [ 'open-long-mid', 'open-short-mid']:
             create_order(*(self.order_consts[key_]))
     
     
-    
-    
+class AccountWS:
+    def __init__(self):
+        self.observers = []
+
+        listen_key = ''
+        BASE_URL = 'https://fapi.binance.com'
+
+        url = f'{BASE_URL}/fapi/v1/listenKey'
+        headers = {
+            'X-MBX-APIKEY': api_key
+        }
+        response = requests.post(url, headers=headers)
+        if response.status_code == 200:
+            listen_key = response.json()['listenKey']
+
+        global accout_ws
+        
+        accout_ws = websocket.WebSocketApp(f"wss://fstream.binance.com/ws/{listen_key}",
+                                    on_message=self.on_message,
+                                    on_error=print,
+                                    )
+        accout_ws.run_forever()
+
+    def subscribe(self, observer):
+        self.observers.append(observer)
+
+    def unsubscribe(self, observer):
+        self.observers.remove(observer)
+
+    def notify(self, message):
+        for observer in self.observers:
+            observer.update(message)
+
+    def on_message(self, ws, message):
+        self.notify(message)
+
+
         
 
 
